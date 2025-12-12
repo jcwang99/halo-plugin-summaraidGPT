@@ -81,6 +81,25 @@ spec:
                 style:
                   marginTop: "8px"
               children: "推荐使用国内加速站Codesphere，一个请求2s，其他都在15s左右"
+        - $formkit: checkbox
+          name: enableEncryption
+          label: 启用数据加密
+          value: false
+          help: "是否对摘要数据进行加密存储。注意：如果使用 Halo 内部数据库，通常不需要加密。加密会增加性能开销，仅在需要额外安全保护时启用。"
+        - $formkit: password
+          name: encryptionKey
+          label: 数据加密密钥
+          placeholder: "请输入加密密钥（用于加密存储摘要数据）"
+          help: "仅在启用加密时有效。用于加密摘要数据的密钥，建议使用强密码。如果留空，将使用默认密钥（不推荐生产环境）。修改密钥后，已加密的数据将无法解密。"
+          value: ""
+          if: "$enableEncryption"
+        - $el: div
+          attrs:
+            class: "formkit-help text-xs text-gray-500"
+            style:
+              marginTop: "4px"
+          if: "$enableEncryption"
+          children: "⚠️ 重要：请妥善保管加密密钥，丢失密钥将导致已加密的摘要数据无法解密。建议使用至少32个字符的强密码。"
         - $el: span
           children: "Halo交流群"
         - $el: div
@@ -131,6 +150,8 @@ spec:
               value: "codesphere"
             - label: 硅基流动
               value: "siliconFlow"
+            - label: DeepSeek
+              value: "deepSeek"
           value: "openAi"
           help: "设置全局默认的AI提供商，当各功能模块AI类型为空时使用此配置"
         - $formkit: group
@@ -151,6 +172,9 @@ spec:
             codesphereConfig:
               apiKey: ""
               modelName: "zhipu-free"
+            deepSeekConfig:
+              apiKey: ""
+              modelName: "deepseek-chat"
           children:
             - $formkit: group
               name: openAiConfig
@@ -335,6 +359,41 @@ spec:
                   help: "硅基流动API地址，使用默认地址即可"
                   value: "https://api.siliconflow.cn"
 
+            - $formkit: group
+              name: deepSeekConfig
+              label: DeepSeek 配置
+              help: "配置DeepSeek AI模型参数"
+              children:
+                - $formkit: password
+                  name: apiKey
+                  label: DeepSeek API密钥
+                  placeholder: "请输入DeepSeek的API Key"
+                  help: "必填，请前往DeepSeek官网获取API Key"
+                - $el: div
+                  attrs:
+                    class: "formkit-help text-xs text-gray-500"
+                  innerHTML: "国内AI服务商 <a href='https://platform.deepseek.com/' title='前往DeepSeek获取API Key' target='_blank' class='text-blue-500 hover:text-blue-700'>DeepSeek 注册并获取API Key</a>，性价比高，支持多种模型。"
+                - $formkit: select
+                  name: modelName
+                  label: DeepSeek 模型名称
+                  searchable: true
+                  allowCreate: true
+                  placeholder: "请选择或输入模型名称"
+                  options:
+                    - label: deepseek-chat
+                      value: deepseek-chat
+                    - label: deepseek-coder
+                      value: deepseek-coder
+                    - label: deepseek-reasoner
+                      value: deepseek-reasoner
+                  help: "选择或自定义DeepSeek模型名称"
+                - $el: a
+                  attrs:
+                    href: "https://platform.deepseek.com/docs"
+                    target: "_blank"
+                    class: "text-blue-500 hover:text-blue-700 text-sm"
+                  children: "查看 DeepSeek 模型列表 ←"
+
     - group: summary
       label: 摘要设置
       formSchema:
@@ -355,6 +414,8 @@ spec:
               value: "codesphere"
             - label: 硅基流动
               value: "siliconFlow"
+            - label: DeepSeek
+              value: "deepSeek"
           help: "选择专门用于摘要生成的AI提供商，留空则使用主配置"
           value: ""
         - $formkit: checkbox
@@ -563,6 +624,8 @@ spec:
               value: "codesphere"
             - label: 硅基流动
               value: "siliconFlow"
+            - label: DeepSeek
+              value: "deepSeek"
           help: "选择专门用于标签生成的AI提供商，留空则使用主配置"
           value: ""
         - $formkit: textarea
@@ -609,6 +672,8 @@ spec:
               value: "codesphere"
             - label: 硅基流动
               value: "siliconFlow"
+            - label: DeepSeek
+              value: "deepSeek"
           help: "选择专门用于对话的AI提供商，留空则使用主配置,暂不支持思考模型,请注意！"
           value: ""
         - $el: div
@@ -709,6 +774,8 @@ spec:
               value: "codesphere"
             - label: 硅基流动
               value: "siliconFlow"
+            - label: DeepSeek
+              value: "deepSeek"
           help: "选择专门用于文章润色的AI提供商，留空则使用主配置"
           value: ""
         - $formkit: textarea
@@ -745,6 +812,8 @@ spec:
               value: "codesphere"
             - label: 硅基流动
               value: "siliconFlow"
+            - label: DeepSeek
+              value: "deepSeek"
           help: "选择专门用于文章生成的AI提供商，留空则使用主配置"
           value: ""
         - $formkit: textarea
@@ -773,6 +842,8 @@ spec:
               value: "codesphere"
             - label: 硅基流动
               value: "siliconFlow"
+            - label: DeepSeek
+              value: "deepSeek"
           help: "选择专门用于标题生成的AI提供商，留空则使用主配置"
           value: ""
         - $formkit: textarea

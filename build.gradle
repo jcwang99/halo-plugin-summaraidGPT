@@ -47,7 +47,7 @@ tasks.named('classes') {
 
 halo {
     debug = true
-    suspend = true
+    suspend = false  // 改为 false，程序正常启动，调试端口仍然可用
     version = '2.21.7'
 }
 

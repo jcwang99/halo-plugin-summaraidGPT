@@ -430,13 +430,30 @@ public class AiServiceUtils {
             os.write(body.getBytes());
         }
 
-        StringBuilder response = new StringBuilder();
-        try (BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()))) {
-            String line;
-            while ((line = br.readLine()) != null) {
-                response.append(line);
+        // 检查响应码
+        int responseCode = conn.getResponseCode();
+        if (responseCode >= 200 && responseCode < 300) {
+            // 成功响应
+            StringBuilder response = new StringBuilder();
+            try (BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()))) {
+                String line;
+                while ((line = br.readLine()) != null) {
+                    response.append(line);
+                }
             }
+            return response.toString();
+        } else {
+            // 错误响应
+            StringBuilder errorResponse = new StringBuilder();
+            try (BufferedReader br = new BufferedReader(new InputStreamReader(conn.getErrorStream()))) {
+                String line;
+                while ((line = br.readLine()) != null) {
+                    errorResponse.append(line);
+                }
+            }
+            String errorMsg = String.format("HTTP %d: %s", responseCode, errorResponse.toString());
+            log.error("API请求失败: {}", errorMsg);
+            throw new IOException(errorMsg);
         }
-        return response.toString();
     }
 }

@@ -170,6 +170,12 @@ public class ArticleGenerateServiceImpl implements ArticleGenerateService {
                 siliconFlowConfig.setBaseUrl(aiConfig.getBaseUrl());
                 modelConfig.setSiliconFlowConfig(siliconFlowConfig);
             }
+            case "deepSeek" -> {
+                SettingConfigGetter.DeepSeekConfig deepSeekConfig = new SettingConfigGetter.DeepSeekConfig();
+                deepSeekConfig.setApiKey(aiConfig.getApiKey());
+                deepSeekConfig.setModelName(aiConfig.getModelName());
+                modelConfig.setDeepSeekConfig(deepSeekConfig);
+            }
         }
         
         basicConfig.setAiModelConfig(modelConfig);

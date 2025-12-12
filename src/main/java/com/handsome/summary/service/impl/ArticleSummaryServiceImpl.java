@@ -9,9 +9,10 @@ import static run.halo.app.extension.index.query.QueryFactory.isNotNull;
 import com.handsome.summary.extension.Summary;
 import com.handsome.summary.service.AiConfigService;
 import com.handsome.summary.service.AiServiceUtils;
-
 import com.handsome.summary.service.ArticleSummaryService;
 import com.handsome.summary.service.SettingConfigGetter;
+import com.handsome.summary.utils.ContentHashUtils;
+import com.handsome.summary.utils.EncryptionUtils;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -43,6 +44,8 @@ public class ArticleSummaryServiceImpl implements ArticleSummaryService {
     private final AiConfigService aiConfigService;
     private final PostContentService postContentService;
     private final ReactiveExtensionClient client;
+    private final EncryptionUtils encryptionUtils;
+    private final SettingConfigGetter settingConfigGetter;
 
     // 常量定义
     public static final String AI_SUMMARY_UPDATED = "summary.lik.cc/ai-summary-updated";
@@ -57,12 +60,84 @@ public class ArticleSummaryServiceImpl implements ArticleSummaryService {
 
     /**
      * 获取指定文章的AI摘要
+     * <p>
+     * 实现内容哈希缓存机制：如果文章内容哈希相同，直接返回缓存的摘要，避免重复生成。
+     * </p>
      * 
      * @param post 文章对象
      * @return 摘要内容
      */
     @Override
     public Mono<String> getSummary(Post post) {
+        String postMetadataName = post.getMetadata().getName();
+        
+        // 先获取文章内容，计算哈希值
+        return postContentService.getReleaseContent(postMetadataName)
+            .flatMap(contentWrapper -> {
+                String content = contentWrapper.getRaw();
+                String currentHash = ContentHashUtils.generateHash(content);
+                
+                if (currentHash == null) {
+                    log.warn("无法生成内容哈希，文章: {}", postMetadataName);
+                    // 如果哈希生成失败，继续正常流程
+                    return generateNewSummary(post);
+                }
+                
+                // 检查缓存：查找相同文章名称和内容哈希的摘要
+                return findSummaryByPostName(postMetadataName)
+                    .filter(summary -> {
+                        String cachedHash = summary.getSummarySpec().getContentHash();
+                        return ContentHashUtils.isHashEqual(currentHash, cachedHash);
+                    })
+                    .next()
+                    .flatMap(cachedSummary -> {
+                        // 找到缓存，尝试解密并返回
+                        String storedSummary = cachedSummary.getSummarySpec().getPostSummary();
+                        
+                        // 检查是否加密：如果格式是 iv:authTag:encryptedText（包含两个冒号），则认为是加密的
+                        String decryptedSummary = null;
+                        if (storedSummary != null && storedSummary.split(":").length == 3) {
+                            // 可能是加密数据，尝试解密
+                            decryptedSummary = encryptionUtils.decrypt(storedSummary);
+                        }
+                        
+                        if (decryptedSummary != null) {
+                            log.info("使用缓存的摘要（已解密），文章: {}, 哈希: {}", postMetadataName, currentHash);
+                            return Mono.just(decryptedSummary);
+                        } else if (storedSummary != null) {
+                            // 解密失败或未加密，使用原始值
+                            log.info("使用缓存的摘要（未加密），文章: {}, 哈希: {}", postMetadataName, currentHash);
+                            return Mono.just(storedSummary);
+                        } else {
+                            log.warn("缓存摘要为空，将重新生成，文章: {}", postMetadataName);
+                            // 摘要为空，重新生成
+                            return generateNewSummary(post, currentHash);
+                        }
+                    })
+                    .switchIfEmpty(Mono.defer(() -> {
+                        // 没有缓存或内容已变化，生成新摘要
+                        log.info("未找到缓存或内容已变化，生成新摘要，文章: {}", postMetadataName);
+                        return generateNewSummary(post, currentHash);
+                    }));
+            })
+            .onErrorResume(this::handleSummaryGenerationError);
+    }
+    
+    /**
+     * 生成新摘要（内部方法，不包含缓存检查）
+     */
+    private Mono<String> generateNewSummary(Post post) {
+        return generateNewSummary(post, null);
+    }
+    
+    /**
+     * 生成新摘要（内部方法，不包含缓存检查）
+     * 
+     * @param post 文章对象
+     * @param contentHash 内容哈希值，如果为 null 则自动计算
+     * @return 摘要内容
+     */
+    private Mono<String> generateNewSummary(Post post, String contentHash) {
         return Mono.zip(
                 aiConfigService.getAiConfigForFunction("summary"),
                 aiConfigService.getAiServiceForFunction("summary")
@@ -74,9 +149,21 @@ public class ArticleSummaryServiceImpl implements ArticleSummaryService {
             if (AiServiceUtils.isErrorMessage(summary)) {
                 return Mono.error(new RuntimeException(summary));
             }
-            return saveSummaryToDatabase(summary, post).thenReturn(summary);
-        })
-        .onErrorResume(this::handleSummaryGenerationError);
+            // 如果 contentHash 为 null，重新计算
+            String hash = contentHash;
+            if (hash == null) {
+                return postContentService.getReleaseContent(post.getMetadata().getName())
+                    .map(contentWrapper -> ContentHashUtils.generateHash(contentWrapper.getRaw()))
+                    .flatMap(calculatedHash -> {
+                        if (calculatedHash == null) {
+                            log.warn("无法生成内容哈希，文章: {}", post.getMetadata().getName());
+                        }
+                        return saveSummaryToDatabase(summary, post, calculatedHash).thenReturn(summary);
+                    });
+            } else {
+                return saveSummaryToDatabase(summary, post, hash).thenReturn(summary);
+            }
+        });
     }
 
     /**
@@ -147,6 +234,134 @@ public class ArticleSummaryServiceImpl implements ArticleSummaryService {
     }
 
     /**
+     * 强制重新生成摘要（忽略缓存，直接生成新摘要）
+     * @param post 文章对象
+     * @return 新生成的摘要内容
+     */
+    @Override
+    public Mono<String> regenerateSummary(Post post) {
+        String postMetadataName = post.getMetadata().getName();
+        log.info("开始强制重新生成摘要，文章: {}", postMetadataName);
+        
+        // 先删除所有旧的摘要记录，等待所有删除操作完成
+        return findSummaryByPostName(postMetadataName)
+            .flatMap(summary -> {
+                log.info("删除旧摘要记录，文章: {}, 摘要名称: {}", postMetadataName, summary.getMetadata().getName());
+                return client.delete(summary);
+            })
+            .collectList()  // 收集所有删除操作
+            .flatMap(deletedSummaries -> {
+                log.info("已删除 {} 条旧摘要记录，文章: {}", deletedSummaries.size(), postMetadataName);
+                // 等待一小段时间确保删除操作完全完成
+                return Mono.delay(java.time.Duration.ofMillis(100))
+                    .then(Mono.defer(() -> {
+                        // 删除完成后，强制生成新摘要（不检查缓存）
+                        return postContentService.getReleaseContent(postMetadataName)
+                            .flatMap(contentWrapper -> {
+                                String content = contentWrapper.getRaw();
+                                String contentHash = ContentHashUtils.generateHash(content);
+                                
+                                return Mono.zip(
+                                    aiConfigService.getAiConfigForFunction("summary"),
+                                    aiConfigService.getAiServiceForFunction("summary")
+                                )
+                                .flatMap(tuple -> generateSummaryWithAiConfig(post, tuple.getT1(), tuple.getT2()))
+                                .map(AiServiceUtils::extractContentFromResponse)  // 提取摘要内容
+                                .flatMap(summary -> {
+                                    // 检查是否是错误信息
+                                    if (AiServiceUtils.isErrorMessage(summary)) {
+                                        log.error("生成摘要失败，返回错误信息: {}", summary);
+                                        return Mono.error(new RuntimeException(summary));
+                                    }
+                                    
+                                    // 保存新生成的摘要（如果保存失败，尝试创建新的）
+                                    return saveSummaryToDatabase(summary, post, contentHash)
+                                        .onErrorResume(e -> {
+                                            // 如果保存失败（可能是版本冲突），尝试创建新的
+                                            log.warn("保存摘要失败，尝试创建新摘要，文章: {}, 错误: {}", postMetadataName, e.getMessage());
+                                            return createNewSummaryDirectly(summary, post, postMetadataName, contentHash);
+                                        })
+                                        .thenReturn(summary);
+                                });
+                            });
+                    }));
+            })
+            .switchIfEmpty(Mono.defer(() -> {
+                // 如果没有旧摘要需要删除，直接生成新摘要
+                log.info("没有旧摘要需要删除，直接生成新摘要，文章: {}", postMetadataName);
+                return postContentService.getReleaseContent(postMetadataName)
+                    .flatMap(contentWrapper -> {
+                        String content = contentWrapper.getRaw();
+                        String contentHash = ContentHashUtils.generateHash(content);
+                        
+                        return Mono.zip(
+                            aiConfigService.getAiConfigForFunction("summary"),
+                            aiConfigService.getAiServiceForFunction("summary")
+                        )
+                        .flatMap(tuple -> generateSummaryWithAiConfig(post, tuple.getT1(), tuple.getT2()))
+                        .map(AiServiceUtils::extractContentFromResponse)
+                        .flatMap(summary -> {
+                            if (AiServiceUtils.isErrorMessage(summary)) {
+                                log.error("生成摘要失败，返回错误信息: {}", summary);
+                                return Mono.error(new RuntimeException(summary));
+                            }
+                            return createNewSummaryDirectly(summary, post, postMetadataName, contentHash)
+                                .thenReturn(summary);
+                        });
+                    });
+            }))
+            .doOnSuccess(summary -> log.info("强制重新生成摘要成功，文章: {}, 摘要长度: {}", postMetadataName, summary != null ? summary.length() : 0))
+            .doOnError(e -> log.error("强制重新生成摘要失败，文章: {}, 错误: {}", postMetadataName, e.getMessage(), e));
+    }
+    
+    /**
+     * 直接创建新摘要（不检查是否存在）
+     */
+    private Mono<Void> createNewSummaryDirectly(String summary, Post post, String postMetadataName, String contentHash) {
+        // 检查是否启用加密
+        return aiConfigService.getAiConfigForFunction("summary")
+            .flatMap(aiConfig -> settingConfigGetter.getBasicConfig()
+                .map(basicConfig -> {
+                    boolean shouldEncrypt = basicConfig.getEnableEncryption() != null 
+                        && basicConfig.getEnableEncryption();
+                    
+                    final String summaryToSave;
+                    if (shouldEncrypt) {
+                        String encrypted = encryptionUtils.encrypt(summary);
+                        if (encrypted == null) {
+                            log.error("加密摘要失败，文章: {}，将保存明文", postMetadataName);
+                            summaryToSave = summary;
+                        } else {
+                            summaryToSave = encrypted;
+                        }
+                    } else {
+                        summaryToSave = summary;
+                    }
+                    
+                    return summaryToSave;
+                })
+            )
+            .defaultIfEmpty(summary)
+            .flatMap(summaryToSave -> {
+                Summary summaryEntity = new Summary();
+                summaryEntity.setMetadata(new Metadata());
+                summaryEntity.getMetadata().setGenerateName("summary-");
+                
+                Summary.SummarySpec summarySpec = new Summary.SummarySpec();
+                summarySpec.setPostSummary(summaryToSave);
+                summarySpec.setPostMetadataName(postMetadataName);
+                summarySpec.setPostUrl(post.getStatus().getPermalink());
+                summarySpec.setContentHash(contentHash);
+                summaryEntity.setSummarySpec(summarySpec);
+                
+                return client.create(summaryEntity)
+                    .doOnSuccess(s -> log.info("新摘要已创建，文章: {}", postMetadataName))
+                    .doOnError(e -> log.error("创建新摘要失败，文章: {}, 错误: {}", postMetadataName, e.getMessage(), e))
+                    .then();
+            });
+    }
+
+    /**
      * 使用新的AI配置生成摘要
      */
     private Mono<String> generateSummaryWithAiConfig(Post post, SettingConfigGetter.AiConfigResult aiConfig, 
@@ -169,28 +384,62 @@ public class ArticleSummaryServiceImpl implements ArticleSummaryService {
 
 
     /**
-     * 保存摘要到数据库
+     * 保存摘要到数据库（带内容哈希）
+     * 
+     * @param summary 明文摘要
+     * @param post 文章对象
+     * @param contentHash 内容哈希值
      */
-    private Mono<Void> saveSummaryToDatabase(String summary, Post post) {
+    private Mono<Void> saveSummaryToDatabase(String summary, Post post, String contentHash) {
         String postMetadataName = post.getMetadata().getName();
-        var summaryFlux = findSummaryByPostName(postMetadataName);
         
-        return summaryFlux
-            .collectList()
-            .flatMap(list -> {
-                if (!list.isEmpty()) {
-                    return updateExistingSummary(list.getFirst(), summary, postMetadataName);
-                } else {
-                    return createNewSummary(summary, post, postMetadataName);
-                }
+        // 检查是否启用加密
+        return aiConfigService.getAiConfigForFunction("summary")
+            .flatMap(aiConfig -> settingConfigGetter.getBasicConfig()
+                .map(basicConfig -> {
+                    boolean shouldEncrypt = basicConfig.getEnableEncryption() != null 
+                        && basicConfig.getEnableEncryption();
+                    
+                    final String summaryToSave;
+                    if (shouldEncrypt) {
+                        // 启用加密，加密摘要
+                        String encrypted = encryptionUtils.encrypt(summary);
+                        if (encrypted == null) {
+                            log.error("加密摘要失败，文章: {}，将保存明文", postMetadataName);
+                            summaryToSave = summary;
+                        } else {
+                            summaryToSave = encrypted;
+                        }
+                    } else {
+                        // 未启用加密，直接保存明文
+                        summaryToSave = summary;
+                    }
+                    
+                    return summaryToSave;
+                })
+            )
+            .defaultIfEmpty(summary) // 如果获取配置失败，使用明文
+            .flatMap(summaryToSave -> {
+                var summaryFlux = findSummaryByPostName(postMetadataName);
+                return summaryFlux
+                    .collectList()
+                    .flatMap(list -> {
+                        if (!list.isEmpty()) {
+                            return updateExistingSummary(list.getFirst(), summaryToSave, contentHash, postMetadataName);
+                        } else {
+                            return createNewSummary(summaryToSave, post, postMetadataName, contentHash);
+                        }
+                    });
             });
     }
 
     /**
      * 更新现有摘要
      */
-    private Mono<Void> updateExistingSummary(Summary existing, String summary, String postMetadataName) {
-        existing.getSummarySpec().setPostSummary(summary);
+    private Mono<Void> updateExistingSummary(Summary existing, String encryptedSummary, 
+                                             String contentHash, String postMetadataName) {
+        existing.getSummarySpec().setPostSummary(encryptedSummary);
+        existing.getSummarySpec().setContentHash(contentHash);
         return client.update(existing)
             .doOnSuccess(s -> log.info("摘要已更新到数据库，文章: {}", postMetadataName))
             .doOnError(e -> log.error("更新摘要到数据库失败，文章: {}, 错误: {}", postMetadataName, e.getMessage(), e))
@@ -200,15 +449,17 @@ public class ArticleSummaryServiceImpl implements ArticleSummaryService {
     /**
      * 创建新摘要
      */
-    private Mono<Void> createNewSummary(String summary, Post post, String postMetadataName) {
+    private Mono<Void> createNewSummary(String encryptedSummary, Post post, 
+                                       String postMetadataName, String contentHash) {
         Summary summaryEntity = new Summary();
         summaryEntity.setMetadata(new Metadata());
         summaryEntity.getMetadata().setGenerateName("summary-");
         
         Summary.SummarySpec summarySpec = new Summary.SummarySpec();
-        summarySpec.setPostSummary(summary);
+        summarySpec.setPostSummary(encryptedSummary);
         summarySpec.setPostMetadataName(postMetadataName);
         summarySpec.setPostUrl(post.getStatus().getPermalink());
+        summarySpec.setContentHash(contentHash);
         summaryEntity.setSummarySpec(summarySpec);
         
         return client.create(summaryEntity)
@@ -232,7 +483,26 @@ public class ArticleSummaryServiceImpl implements ArticleSummaryService {
         return findSummaryByPostName(postMetadataName)
             .next()
             .flatMap(summary -> {
-                String summaryContent = summary.getSummarySpec().getPostSummary();
+                final String storedSummary = summary.getSummarySpec().getPostSummary();
+                
+                // 检查是否加密：如果格式是 iv:authTag:encryptedText（包含两个冒号），则认为是加密的
+                final String summaryContent;
+                if (storedSummary != null && storedSummary.split(":").length == 3) {
+                    // 可能是加密数据，尝试解密
+                    String decryptedContent = encryptionUtils.decrypt(storedSummary);
+                    if (decryptedContent != null) {
+                        summaryContent = decryptedContent;
+                        log.debug("成功解密摘要，文章: {}", postMetadataName);
+                    } else {
+                        // 解密失败，可能是格式巧合，使用原始值
+                        summaryContent = storedSummary;
+                        log.debug("解密失败，使用原始值，文章: {}", postMetadataName);
+                    }
+                } else {
+                    // 不是加密格式，直接使用
+                    summaryContent = storedSummary;
+                }
+                
                 log.info("找到摘要内容，文章: {}, 长度: {}", postMetadataName, 
                     summaryContent != null ? summaryContent.length() : 0);
                 

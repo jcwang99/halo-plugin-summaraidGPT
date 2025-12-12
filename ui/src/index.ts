@@ -59,6 +59,46 @@ export default definePlugin({
                 });
               },
             },
+            {
+              priority: 1,
+              component: markRaw(VDropdownItem),
+              label: '重新生成摘要',
+              visible: true,
+              action: async (item?: ListedPost) => {
+                if (!item || !item.post?.metadata?.name) return;
+                Dialog.warning({
+                  title: '重新生成摘要',
+                  description:
+                    '此操作将删除旧的摘要记录并重新生成，此操作不可逆转！',
+                  onConfirm: async () => {
+                    try {
+                      const postName = item.post.metadata.name;
+                      const response = await axios.post(
+                        `/apis/api.summary.summaraidgpt.lik.cc/v1alpha1/regenerate/${encodeURIComponent(postName)}`,
+                        {},
+                        {
+                          headers: {
+                            'Content-Type': 'application/json',
+                          },
+                        }
+                      );
+                      if (response.data && !response.data.startsWith('重新生成失败')) {
+                        Toast.success('重新生成摘要成功');
+                      } else {
+                        Toast.error(response.data || '重新生成失败，请重试');
+                      }
+                    } catch (error) {
+                      if (error instanceof AxiosError) {
+                        const errorMsg = error.response?.data?.detail || error.response?.data || error.message || '重新生成失败，请重试';
+                        Toast.error(errorMsg);
+                      } else {
+                        Toast.error('重新生成失败，请重试');
+                      }
+                    }
+                  },
+                });
+              },
+            },
           ],
         },
       ];

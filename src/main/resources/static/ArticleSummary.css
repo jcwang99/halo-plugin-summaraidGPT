@@ -20,7 +20,18 @@
 }
 
 .likcc-summaraidGPT-summary--dark {
-  --likcc-summaraid-bg: #23272e;
+  --likcc-summaraid-bg: rgba(22, 28, 41, 0.7);
+  --likcc-summaraid-border-color: rgba(129, 148, 248, 0.2);
+  --likcc-summaraid-text: #e0e7ff;
+  --likcc-summaraid-text-secondary: #a8b2d1;
+  --likcc-summaraid-cursor-color: #8194f8;
+  --likcc-summaraid-loading-color: #a8b2d1;
+  --likcc-summaraid-scanner-gradient: linear-gradient(90deg, transparent, rgba(129, 148, 248, 0.5), transparent);
+  --likcc-summaraid-icon-gradient: linear-gradient(135deg, #a855f7, #6366f1, #8194f8, #a855f7);
+  --likcc-summaraid-icon-shadow: 0 0 8px rgba(168, 85, 247, 0.4);
+  --likcc-summaraid-icon-shadow-glow: 0 0 18px rgba(168, 85, 247, 0.8);
+  --likcc-summaraid-aurora-bg: radial-gradient(circle at 10% 20%, rgba(129, 148, 248, 0.2) 0%, rgba(129, 148, 248, 0) 25%), radial-gradient(circle at 80% 70%, rgba(168, 85, 247, 0.2) 0%, rgba(168, 85, 247, 0) 25%);
+  --likcc-summaraid-aurora-opacity: 1;
   --likcc-summaraid-main: #90caf9;
   --likcc-summaraid-title: #fff;
   --likcc-summaraid-content: #e3e8f7;
@@ -35,7 +46,18 @@
 }
 
 .likcc-summaraidGPT-summary--default {
-  --likcc-summaraid-bg: #f7f9fe;
+  --likcc-summaraid-bg: rgba(255, 255, 255, 0.65);
+  --likcc-summaraid-border-color: rgba(59, 130, 246, 0.2);
+  --likcc-summaraid-text: #1f2937;
+  --likcc-summaraid-text-secondary: #4b5563;
+  --likcc-summaraid-cursor-color: #3b82f6;
+  --likcc-summaraid-loading-color: #4b5563;
+  --likcc-summaraid-scanner-gradient: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.4), transparent);
+  --likcc-summaraid-icon-gradient: linear-gradient(135deg, #3b82f6, #60a5fa, #818cf8, #3b82f6);
+  --likcc-summaraid-icon-shadow: 0 0 6px rgba(59, 130, 246, 0.3);
+  --likcc-summaraid-icon-shadow-glow: 0 0 16px rgba(59, 130, 246, 0.7);
+  --likcc-summaraid-aurora-bg: radial-gradient(circle at 15% 80%, rgba(59, 130, 246, 0.15) 0%, rgba(59, 130, 246, 0) 25%), radial-gradient(circle at 85% 25%, rgba(139, 92, 246, 0.15) 0%, rgba(139, 92, 246, 0) 25%);
+  --likcc-summaraid-aurora-opacity: 1;
   --likcc-summaraid-main: #4F8DFD;
   --likcc-summaraid-title: #3A5A8C;
   --likcc-summaraid-content: #222;
@@ -88,39 +110,62 @@
 .likcc-summaraidGPT-summary-container {
   width: 100%;
   box-sizing: border-box;
-  border-radius: 0.7rem;
-  background: var(--likcc-summaraid-bg, rgba(250, 245, 255, 0.85));
-  border: 1px solid var(--likcc-summaraid-border, #f3e6f9);
-  box-shadow: var(--likcc-summaraid-shadow, 0 1px 4px 0 rgba(177,108,234,0.04));
+  margin: 30px 0;
+  padding: 30px;
+  border-radius: 20px;
+  font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background: var(--likcc-summaraid-bg, rgba(22, 28, 41, 0.7));
+  border: 1px solid var(--likcc-summaraid-border, rgba(129, 148, 248, 0.2));
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+  transition: background 0.5s ease, border 0.5s ease, box-shadow 0.3s ease, transform 0.3s ease;
+  animation: likcc-summaraidGPT-fadein 0.8s ease-out forwards;
+  position: relative;
+  overflow: hidden;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   gap: 0;
-  position: relative;
-  z-index: 0;
   line-height: 1.5;
-  padding: 0.5rem 0.5rem 0.5rem 0.5rem;
   font-size: 0.98rem;
-  transition: box-shadow 0.25s, background 0.2s, transform 0.18s;
-  opacity: 0;
-  transform: translateY(12px);
-  animation: likcc-summaraidGPT-fadein 0.7s cubic-bezier(.4,1.4,.6,1) forwards;
-  margin: 0.25rem 0;
 }
+
+/* 动态极光背景 */
+.likcc-summaraidGPT-summary-container::before {
+  content: '';
+  position: absolute;
+  top: 0; right: 0; bottom: 0; left: 0;
+  background: var(--likcc-summaraid-aurora-bg, radial-gradient(circle at 10% 20%, rgba(129, 148, 248, 0.2) 0%, rgba(129, 148, 248, 0) 25%), radial-gradient(circle at 80% 70%, rgba(168, 85, 247, 0.2) 0%, rgba(168, 85, 247, 0) 25%));
+  background-size: 200% 200%;
+  animation: likcc-summaraidGPT-aurora-flow 16s ease infinite;
+  z-index: -1;
+  opacity: var(--likcc-summaraid-aurora-opacity, 1);
+  transition: opacity 0.5s ease;
+}
+
+@keyframes likcc-summaraidGPT-aurora-flow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
 @keyframes likcc-summaraidGPT-fadein {
-  0% { opacity: 0; transform: translateY(12px); }
-  100% { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(20px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
+
 .likcc-summaraidGPT-summary-container:hover {
-  box-shadow: 0 10px 32px 0 rgba(60,80,180,0.13), 0 2px 8px 0 rgba(60,80,180,0.07);
-  transform: translateY(-1.5px) scale(1.01);
+  box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.25), 0 4px 12px 0 rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px) scale(1.01);
 }
 
 .likcc-summaraidGPT-summary-header {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
-  gap: 0.4rem;
-  margin-bottom: 0.5rem;
+  justify-content: space-between;
+  gap: 15px;
+  margin-bottom: 20px;
   background: none;
   box-shadow: none;
 }
@@ -128,73 +173,108 @@
 .likcc-summaraidGPT-header-left {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 15px;
 }
 
-.likcc-summaraidGPT-logo {
-  width: 1.2rem;
-  height: 1.2rem;
-  border-radius: 0.3rem;
-  background: #fff;
-  border: 1px solid var(--likcc-summaraid-border, #f3e6f9);
-  box-shadow: none;
-  object-fit: cover;
+/* AI 艺术字图标 */
+.likcc-summaraidGPT-icon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 26px;
+  font-weight: 800;
+  color: transparent;
+  background: var(--likcc-summaraid-icon-gradient, linear-gradient(135deg, #a855f7, #6366f1, #8194f8, #a855f7));
+  -webkit-background-clip: text;
+  background-clip: text;
+  background-size: 200% 200%;
+  animation: likcc-summaraidGPT-text-gradient-flow 3s ease-in-out infinite;
+}
+
+@keyframes likcc-summaraidGPT-text-gradient-flow {
+  0%, 100% {
+    background-position: 0% 50%;
+    transform: scale(1);
+    filter: drop-shadow(var(--likcc-summaraid-icon-shadow, 0 0 8px rgba(168, 85, 247, 0.4)));
+  }
+  50% {
+    background-position: 100% 50%;
+    transform: scale(1.15);
+    filter: drop-shadow(var(--likcc-summaraid-icon-shadow-glow, 0 0 18px rgba(168, 85, 247, 0.8)));
+  }
 }
 
 .likcc-summaraidGPT-summary-title {
-  font-weight: 600;
-  font-size: 0.97rem;
-  color: var(--likcc-summaraid-title, #5a3a7a);
-  margin-right: 0.4rem;
+  margin: 0;
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--likcc-summaraid-title, var(--likcc-summaraid-text, #1f2937));
 }
 
-.likcc-summaraidGPT-gpt-name {
-  font-size: 0.82rem;
-  font-weight: 500;
-  color: var(--likcc-summaraid-gptName, #a16cea);
-  background: var(--likcc-summaraid-tagBg, linear-gradient(90deg, #b3e5fc 0%, #e3f2fd 100%));
-  border-radius: 0.35rem;
-  padding: 1px 7px;
-  margin-left: auto;
-  min-width: 24px;
-  position: relative;
-  overflow: hidden;
-  box-shadow: none;
-}
-.likcc-summaraidGPT-gpt-name::before {
-  content: '';
-  position: absolute;
-  top: 0; left: -100%;
-  width: 50%; height: 100%;
-  background: linear-gradient(120deg, transparent, rgba(66,90,239,0.13), transparent);
-  animation: likcc-summaraidGPT-shine 3s infinite linear;
-  pointer-events: none;
-}
-@keyframes likcc-summaraidGPT-shine {
-  0% { left: -100%; }
-  20% { left: 100%; }
-  100% { left: 100%; }
-}
+/* 重新生成按钮已移除，功能仅在后台管理界面提供 */
 
 .likcc-summaraidGPT-summary-content {
-  background: var(--likcc-summaraid-contentBg, rgba(255,255,255,0.92));
-  border-radius: 0.45rem;
-  padding: 0.4rem 0.4rem 0.3rem 0.4rem;
-  font-size: var(--likcc-summaraid-contentFontSize, 14px);
-  color: var(--likcc-summaraid-content, #4b2e5c);
-  border: 1px solid var(--likcc-summaraid-border, #f3e6f9);
+  color: var(--likcc-summaraid-text-secondary, var(--likcc-summaraid-content, #4b5563));
+  line-height: 1.8;
+  font-size: var(--likcc-summaraid-contentFontSize, 16px);
   margin: 0;
+  min-height: 28px;
   word-break: break-word;
-  line-height: 1.85;
-  box-shadow: var(--likcc-summaraid-shadow, none);
-  transition: background 0.3s, box-shadow 0.2s;
-  opacity: 0;
-  transform: translateY(6px);
-  animation: likcc-summaraidGPT-contentin 0.7s 0.12s cubic-bezier(.4,1.4,.6,1) forwards;
+  transition: color 0.3s ease;
 }
-@keyframes likcc-summaraidGPT-contentin {
-  0% { opacity: 0; transform: translateY(6px); }
-  100% { opacity: 1; transform: translateY(0); }
+
+/* 打字机光标效果 */
+.likcc-summaraidGPT-typewriter.typing {
+  border-right: 2px solid var(--likcc-summaraid-cursor-color, var(--likcc-summaraid-cursor, #4F8DFD));
+  animation: likcc-summaraidGPT-blinkCursor 0.7s step-end infinite;
+  padding-right: 3px;
+  display: inline-block;
+}
+
+@keyframes likcc-summaraidGPT-blinkCursor {
+  from, to { border-color: transparent; }
+  50% { border-color: var(--likcc-summaraid-cursor-color, var(--likcc-summaraid-cursor, #4F8DFD)); }
+}
+
+/* 加载状态 - 能量扫描动画 */
+.likcc-summaraidGPT-loading {
+  font-size: 15px;
+  color: var(--likcc-summaraid-loading-color, var(--likcc-summaraid-text-secondary, #4b5563));
+  position: relative;
+  padding: 4px 0;
+  overflow: hidden;
+}
+
+.likcc-summaraidGPT-loading::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--likcc-summaraid-scanner-gradient, linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.4), transparent));
+  animation: likcc-summaraidGPT-scanner 2s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes likcc-summaraidGPT-scanner {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* 错误状态 */
+.likcc-summaraidGPT-error {
+  color: #ff8a8a;
+  background-color: rgba(255, 82, 82, 0.15);
+  border: 1px solid rgba(255, 82, 82, 0.3);
+  padding: 12px 18px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 500;
+  display: inline-block;
 }
 
 .likcc-summaraidGPT-tag {

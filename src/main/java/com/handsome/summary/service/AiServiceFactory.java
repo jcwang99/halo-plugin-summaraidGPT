@@ -33,6 +33,10 @@ public class AiServiceFactory {
         if ("codesphere".equalsIgnoreCase(modelType) || "siliconFlow".equalsIgnoreCase(modelType)) {
             return serviceMap.getOrDefault("openAi", serviceMap.values().stream().findFirst().orElseThrow());
         }
+        // DeepSeek 使用独立的服务实现
+        if ("deepSeek".equalsIgnoreCase(modelType)) {
+            return serviceMap.getOrDefault("deepSeek", serviceMap.values().stream().findFirst().orElseThrow());
+        }
         return serviceMap.getOrDefault(modelType, serviceMap.values().stream().findFirst().orElseThrow());
     }
 } 

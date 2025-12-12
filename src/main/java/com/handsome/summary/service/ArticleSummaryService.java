@@ -32,4 +32,11 @@ public interface ArticleSummaryService {
      * @return Map 包含 total, finished
      */
     Mono<Map<String, Integer>> getSyncProgress();
+    
+    /**
+     * 强制重新生成摘要（忽略缓存）
+     * @param post 文章对象
+     * @return 新生成的摘要内容
+     */
+    Mono<String> regenerateSummary(Post post);
 } 

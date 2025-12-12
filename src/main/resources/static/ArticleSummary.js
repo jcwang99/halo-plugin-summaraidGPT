@@ -17,22 +17,19 @@
     }
   }
 
-  // 打字机效果
+  // 打字机效果（改进版，支持光标动画）
   function likcc_summaraidGPT_typeWriter(element, text, speed = 50) {
     return new Promise((resolve) => {
       let index = 0;
-      element.innerHTML = '';
+      element.textContent = ''; // 使用 textContent 而不是 innerHTML，更安全
 
       function type() {
         if (index < text.length) {
-          element.innerHTML += text.charAt(index);
+          element.textContent += text.charAt(index);
           index++;
           setTimeout(type, speed);
         } else {
-          // 添加闪烁光标
-          const cursor = document.createElement('span');
-          cursor.className = 'likcc-summaraidGPT-cursor';
-          element.appendChild(cursor);
+          // 打字完成，移除 typing 类（光标会通过 CSS 自动隐藏）
           resolve();
         }
       }
@@ -41,16 +38,15 @@
     });
   }
 
-  // 创建摘要框HTML
+  // 创建摘要框HTML（保留 AI 艺术字图标）
   function likcc_summaraidGPT_createSummaryBoxHTML(config) {
     return `
             <div class="likcc-summaraidGPT-summary-container">
                 <div class="likcc-summaraidGPT-summary-header">
                     <div class="likcc-summaraidGPT-header-left">
-                        <img class="likcc-summaraidGPT-logo  not-prose" src="${config.logo || ''}" alt="AI Logo">
-                        <span class="likcc-summaraidGPT-summary-title">${config.summaryTitle || 'AI摘要'}</span>
+                        <div class="likcc-summaraidGPT-icon">AI</div>
+                        <h3 class="likcc-summaraidGPT-summary-title">${config.summaryTitle || 'AI 生成的摘要'}</h3>
                     </div>
-                    <span class="likcc-summaraidGPT-gpt-name">${config.gptName || 'LikccGPT'}</span>
                 </div>
                 <div class="likcc-summaraidGPT-summary-content"></div>
             </div>
@@ -270,17 +266,32 @@
     })
     .then(data => {
       const content = data.summaryContent || '暂无摘要内容';
+      if (!content || content.trim() === '' || content === '暂无摘要内容') {
+        contentElement.innerHTML = '<div class="likcc-summaraidGPT-error">暂无摘要内容</div>';
+        return;
+      }
+      
       if (config.typewriter) {
-        likcc_summaraidGPT_typeWriter(contentElement, content, config.typeSpeed);
+        // 使用打字机效果，带光标动画
+        const typewriterSpan = document.createElement('span');
+        typewriterSpan.className = 'likcc-summaraidGPT-typewriter typing';
+        contentElement.innerHTML = '';
+        contentElement.appendChild(typewriterSpan);
+        likcc_summaraidGPT_typeWriter(typewriterSpan, content, config.typeSpeed).then(() => {
+          // 打字完成后移除 typing 类，光标会消失
+          typewriterSpan.classList.remove('typing');
+        });
       } else {
-        contentElement.innerHTML = content;
+        // 不使用打字机效果，直接显示
+        contentElement.textContent = content;
       }
     })
     .catch(error => {
       console.warn('获取摘要失败:', error);
-      contentElement.innerHTML = '摘要加载失败，请稀后重试';
+      contentElement.innerHTML = '<div class="likcc-summaraidGPT-error">摘要加载失败，请稍后重试</div>';
     });
   }
+
 
   // 通过API获取摘要配置
   function fetchSummaryConfig() {
@@ -443,8 +454,8 @@
 
         // 获取内容元素并通过API动态获取摘要
         const contentElement = summaryContainer.querySelector('.likcc-summaraidGPT-summary-content');
-        // 先显示loading状态
-        contentElement.innerHTML = '<span style="color:#bbb;">正在生成摘要...</span>';
+        // 先显示loading状态（使用能量扫描动画）
+        contentElement.innerHTML = '<div class="likcc-summaraidGPT-loading">正在生成摘要...</div>';
 
         // 通过API获取摘要内容
         fetchSummaryContent(window.location.pathname, contentElement, finalConfig);

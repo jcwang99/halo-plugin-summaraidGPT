@@ -1,3 +1,4 @@
+/ai-node-v/
 ### Maven
 target/
 logs/
@@ -73,3 +74,4 @@ application-local.properties
 /ui/node_modules/
 /workplace/
 /src/main/resources/console/
+FEATURE_MERGE_LIST.md

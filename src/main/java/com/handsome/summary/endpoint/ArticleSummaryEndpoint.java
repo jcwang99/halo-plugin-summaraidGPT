@@ -93,6 +93,14 @@ public class ArticleSummaryEndpoint implements CustomEndpoint {
                     .description("查询全量摘要同步进度")
                     .response(responseBuilder().implementation(String.class))
             )
+            .POST("/regenerate/{postName}", this::regenerateSummary,
+                builder -> builder.operationId("RegenerateSummary")
+                    .tag(tag)
+                    .description("重新生成指定文章的摘要")
+                    .parameter(parameterBuilder().name("postName").in(ParameterIn.PATH).required(true)
+                        .implementation(String.class))
+                    .response(responseBuilder().implementation(String.class))
+            )
             .build();
     }
 
@@ -196,6 +204,47 @@ public class ArticleSummaryEndpoint implements CustomEndpoint {
     private Mono<ServerResponse> getSyncProgress(ServerRequest request) {
         return articleSummaryService.getSyncProgress()
             .flatMap(progress -> ServerResponse.ok().contentType(MediaType.APPLICATION_JSON).bodyValue(progress));
+    }
+
+    /**
+     * 重新生成指定文章的摘要
+     */
+    private Mono<ServerResponse> regenerateSummary(ServerRequest request) {
+        String postName = extractPostName(request);
+        
+        return extensionClient.fetch(Post.class, postName)
+            .flatMap(post -> {
+                // 使用服务层的强制重新生成方法
+                return articleSummaryService.regenerateSummary(post)
+                    .flatMap(summary -> {
+                        if (summary == null || summary.trim().isEmpty()) {
+                            log.warn("重新生成摘要为空，文章: {}", postName);
+                            return ServerResponse.ok()
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .bodyValue("重新生成失败：摘要内容为空");
+                        }
+                        
+                        log.info("重新生成摘要成功，文章: {}, 摘要长度: {}", postName, summary.length());
+                        return ServerResponse.ok()
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .bodyValue(summary);
+                    });
+            })
+            .onErrorResume(e -> {
+                String errorMessage = e.getMessage();
+                // 如果错误信息已经是格式化的错误信息，直接返回
+                if (errorMessage != null && (errorMessage.startsWith("[") || errorMessage.startsWith("重新生成失败"))) {
+                    log.error("重新生成摘要失败，文章: {}, 错误: {}", postName, errorMessage);
+                    return ServerResponse.ok()
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .bodyValue(errorMessage);
+                }
+                
+                log.error("重新生成摘要失败，文章: {}, 错误: {}", postName, e.getMessage(), e);
+                return ServerResponse.ok()
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue("重新生成失败：" + (errorMessage != null ? errorMessage : "未知错误"));
+            });
     }
 
     /**

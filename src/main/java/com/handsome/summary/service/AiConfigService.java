@@ -81,6 +81,12 @@ public class AiConfigService {
                 siliconFlowConfig.setBaseUrl(aiConfigResult.getBaseUrl());
                 aiModelConfig.setSiliconFlowConfig(siliconFlowConfig);
             }
+            case "deepSeek" -> {
+                SettingConfigGetter.DeepSeekConfig deepSeekConfig = new SettingConfigGetter.DeepSeekConfig();
+                deepSeekConfig.setApiKey(aiConfigResult.getApiKey());
+                deepSeekConfig.setModelName(aiConfigResult.getModelName());
+                aiModelConfig.setDeepSeekConfig(deepSeekConfig);
+            }
         }
         
         basicConfig.setAiModelConfig(aiModelConfig);

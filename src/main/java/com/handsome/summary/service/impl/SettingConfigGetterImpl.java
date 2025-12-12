@@ -164,6 +164,15 @@ public class SettingConfigGetterImpl implements SettingConfigGetter {
                     result.setBaseUrl(siliconFlowConfig.getBaseUrl());
                 }
             }
+            case "deepSeek" -> {
+                if (modelConfig.getDeepSeekConfig() != null) {
+                    var deepSeekConfig = modelConfig.getDeepSeekConfig();
+                    result.setApiKey(deepSeekConfig.getApiKey());
+                    result.setModelName(deepSeekConfig.getModelName());
+                    // DeepSeek 使用固定 baseURL
+                    result.setBaseUrl("https://api.deepseek.com");
+                }
+            }
         }
     }
     

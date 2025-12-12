@@ -30,5 +30,7 @@ public class Summary extends AbstractExtension {
         private String postUrl;
         @Schema(requiredMode = REQUIRED)
         private String postSummary;
+        @Schema(description = "文章内容哈希值，用于缓存判断")
+        private String contentHash;
     }
 }

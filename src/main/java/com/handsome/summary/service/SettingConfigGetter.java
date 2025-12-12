@@ -34,6 +34,8 @@ public interface SettingConfigGetter {
         public static final String GROUP = "basic";
         private String globalAiType;
         private AiModelConfig aiModelConfig;
+        private String encryptionKey;
+        private Boolean enableEncryption; // 是否启用加密，默认 false
     }
     
     @Data
@@ -43,6 +45,7 @@ public interface SettingConfigGetter {
         private DashScopeConfig dashScopeConfig;
         private CodesphereConfig codesphereConfig;
         private SiliconFlowConfig siliconFlowConfig;
+        private DeepSeekConfig deepSeekConfig;
     }
     
     @Data
@@ -75,6 +78,12 @@ public interface SettingConfigGetter {
         private String apiKey;
         private String modelName;
         private String baseUrl;
+    }
+    
+    @Data
+    class DeepSeekConfig {
+        private String apiKey;
+        private String modelName;
     }
     
     @Data
