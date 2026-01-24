@@ -6,28 +6,13 @@ import java.util.List;
 
 public interface SettingConfigGetter {
     Mono<BasicConfig> getBasicConfig();
-    Mono<SummaryConfig> getSummaryConfig();
-    Mono<StyleConfig> getStyleConfig();
-    Mono<TagsConfig> getTagsConfig();
-    Mono<AssistantConfig> getAssistantConfig();
-    Mono<PolishConfig> getPolishConfig();
+
     Mono<GenerateConfig> getGenerateConfig();
-    Mono<TitleConfig> getTitleConfig();
-    
+
     /**
      * 通用AI获取方法 - 根据功能类型获取对应的AI配置
      */
     Mono<AiConfigResult> getAiConfigForFunction(String functionType);
-    
-    /**
-     * 快速获取标题生成AI类型
-     */
-    String getTitleAiType();
-    
-    /**
-     * 快速获取标题生成系统提示词
-     */
-    String getTitleSystemPrompt();
 
     @Data
     class BasicConfig {
@@ -37,7 +22,7 @@ public interface SettingConfigGetter {
         private String encryptionKey;
         private Boolean enableEncryption; // 是否启用加密，默认 false
     }
-    
+
     @Data
     class AiModelConfig {
         private OpenAiConfig openAiConfig;
@@ -47,45 +32,45 @@ public interface SettingConfigGetter {
         private SiliconFlowConfig siliconFlowConfig;
         private DeepSeekConfig deepSeekConfig;
     }
-    
+
     @Data
     class OpenAiConfig {
         private String apiKey;
         private String modelName;
         private String baseUrl;
     }
-    
+
     @Data
     class ZhipuAiConfig {
         private String apiKey;
         private String modelName;
     }
-    
+
     @Data
     class DashScopeConfig {
         private String apiKey;
         private String modelName;
     }
-    
+
     @Data
     class CodesphereConfig {
         private String apiKey;
         private String modelName;
     }
-    
+
     @Data
     class SiliconFlowConfig {
         private String apiKey;
         private String modelName;
         private String baseUrl;
     }
-    
+
     @Data
     class DeepSeekConfig {
         private String apiKey;
         private String modelName;
     }
-    
+
     @Data
     class AiConfigResult {
         private String aiType;
@@ -101,7 +86,7 @@ public interface SettingConfigGetter {
         private String summaryAiType;
         private String summarySystemPrompt;
         private Boolean enable;
-        private Boolean enableUiInjection;  // 是否注入前端UI（CSS/JS/DOM）
+        private Boolean enableUiInjection; // 是否注入前端UI（CSS/JS/DOM）
         private String summaryTitle;
         private String gptName;
         private String darkSelector;
@@ -150,7 +135,7 @@ public interface SettingConfigGetter {
         private String buttonPosition;
         private List<String> suggestions;
     }
-    
+
     @Data
     class PolishConfig {
         public static final String GROUP = "polish";
@@ -158,14 +143,14 @@ public interface SettingConfigGetter {
         private String polishSystemPrompt;
         private Integer polishMaxLength;
     }
-    
+
     @Data
     class GenerateConfig {
         public static final String GROUP = "generate";
         private String generateAiType;
         private String generateSystemPrompt;
     }
-    
+
     @Data
     class TitleConfig {
         public static final String GROUP = "title";

@@ -15,5 +15,5 @@ export default rsbuildConfig({
         plugins: [Icons({ compiler: "vue3" })],
       },
     },
-  }
+  },
 })

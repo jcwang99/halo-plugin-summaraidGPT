@@ -4,15 +4,24 @@ plugins {
     id "run.halo.plugin.devtools" version "0.6.1"
 }
 
-group 'com.handsome.summary'
+group = 'com.jacylunatic.summary'
 
 repositories {
     mavenCentral()
+    // Halo snapshot 仓库 - 用于获取 2.22 测试版
+    maven { url = 'https://s01.oss.sonatype.org/content/repositories/snapshots/' }
+    // JitPack 仓库 - 用于获取 avif-imageio
+    maven { url = 'https://jitpack.io' }
 }
 
 dependencies {
-    implementation platform('run.halo.tools.platform:plugin:2.21.0')
+    implementation platform('run.halo.tools.platform:plugin:2.22.0')
     compileOnly 'run.halo.app:api'
+
+    // WebP 读写支持（BSD 许可证）
+    implementation 'org.sejda.imageio:webp-imageio:0.1.6'
+    // AVIF 读写支持
+    implementation 'com.github.Tim0x0:avif-imageio:0.1.0'
 
     testImplementation 'run.halo.app:api'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
@@ -26,12 +35,14 @@ test {
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(21)
+        vendor = JvmVendorSpec.AMAZON
     }
 }
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = "UTF-8"
     options.release = 21
+    options.compilerArgs.add("-parameters")
 }
 
 tasks.register('processUiResources', Copy) {
@@ -46,8 +57,5 @@ tasks.named('classes') {
 }
 
 halo {
-    debug = true
-    suspend = false  // 改为 false，程序正常启动，调试端口仍然可用
-    version = '2.21.7'
+    version = '2.22.11'
 }
-

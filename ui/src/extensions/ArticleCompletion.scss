@@ -1,0 +1,9 @@
+.ghost-text {
+  color: #9ca3af;
+  pointer-events: none;
+  font-style: italic;
+  
+  &::before {
+    content: attr(data-content);
+  }
+}

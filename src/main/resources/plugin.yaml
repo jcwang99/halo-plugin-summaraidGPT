@@ -4,7 +4,7 @@ apiVersion: plugin.halo.run/v1alpha1
 kind: Plugin
 metadata:
   # The name defines how the plugin is invoked, A unique name
-  name: summaraidGPT
+  name: ai-copilot
 spec:
   enabled: true
   requires: ">=2.21.0"
@@ -12,13 +12,13 @@ spec:
     name: Handsome
     website: https://lik.cc
   logo: static/icon.svg
-  settingName: plugin-summaraidGPT-settings
-  configMapName: plugin-summaraidGPT-configMap
+  settingName: plugin-ai-copilot-settings
+  configMapName: plugin-ai-copilot-configMap
   homepage: https://lik.cc
   repo: https://github.com/acanyo/halo-plugin-summaraidGPT
   issues: https://www.lik.cc/subject/subject-brhugeis
-  displayName: "智阅GPT-智能AI助手"
-  description: "AI摘要|AI对话|AI创作|AI润色|AI标题|标签生成，一站式焕新内容生产力。"
+  displayName: "Halo AI Copilot - 智能续写助手"
+  description: "类 GitHub Copilot 的文章自动补全插件，提供流畅的 AI 续写体验。"
   license:
     - name: "GPL-3.0"
       url: "https://github.com/halo-dev/plugin-starter/blob/main/LICENSE"

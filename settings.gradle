@@ -3,5 +3,5 @@ pluginManagement {
         gradlePluginPortal()
     }
 }
-rootProject.name = 'plugin-summaraidGPT'
+rootProject.name = 'plugin-ai-copilot'
 include 'ui'
