@@ -40,17 +40,17 @@ public class DeepSeekAiService implements AiService {
      * 创建DeepSeek API连接和基础JSON结构
      */
     private record DeepSeekRequest(HttpURLConnection conn, ObjectMapper mapper, ObjectNode root,
-                                   ArrayNode messages) {
+            ArrayNode messages) {
     }
 
     private DeepSeekRequest createDeepSeekRequest(BasicConfig config, boolean isStream)
-        throws Exception {
+            throws Exception {
         String apiKey, modelName;
         String baseUrl = "https://api.deepseek.com"; // DeepSeek 固定 baseURL
 
         // 获取 DeepSeek 配置
         if (config.getAiModelConfig() != null
-            && config.getAiModelConfig().getDeepSeekConfig() != null) {
+                && config.getAiModelConfig().getDeepSeekConfig() != null) {
             var deepSeekConfig = config.getAiModelConfig().getDeepSeekConfig();
             apiKey = deepSeekConfig.getApiKey();
             modelName = deepSeekConfig.getModelName();
@@ -89,6 +89,11 @@ public class DeepSeekAiService implements AiService {
      */
     @Override
     public String chatCompletionRaw(String prompt, BasicConfig config) {
+        return chatCompletionRaw(prompt, config, null);
+    }
+
+    @Override
+    public String chatCompletionRaw(String prompt, BasicConfig config, Integer maxTokens) {
         try {
             var request = createDeepSeekRequest(config, false);
 
@@ -96,6 +101,10 @@ public class DeepSeekAiService implements AiService {
             ObjectNode message = request.messages().addObject();
             message.put("role", "user");
             message.put("content", prompt);
+
+            if (maxTokens != null && maxTokens > 0) {
+                request.root().put("max_tokens", maxTokens);
+            }
 
             String body = request.mapper().writeValueAsString(request.root());
             return AiServiceUtils.getOutputStream(request.conn(), body);
@@ -107,36 +116,34 @@ public class DeepSeekAiService implements AiService {
 
     @Override
     public String multiTurnChat(String conversationHistory, String systemPrompt, BasicConfig config,
-        Consumer<String> onData, Runnable onComplete, Consumer<String> onError) {
+            Consumer<String> onData, Runnable onComplete, Consumer<String> onError) {
         return AiServiceUtils.handleMultiTurnChat(
-            conversationHistory,
-            systemPrompt,
-            onData,
-            onComplete,
-            onError,
-            (history, prompt) -> processMultiTurnChatSync(history, prompt, config),
-            (history, prompt, dataCallback, completeCallback, errorCallback) ->
-                processMultiTurnChatStream(history, prompt, config, dataCallback, completeCallback,
-                    errorCallback)
-        );
+                conversationHistory,
+                systemPrompt,
+                onData,
+                onComplete,
+                onError,
+                (history, prompt) -> processMultiTurnChatSync(history, prompt, config),
+                (history, prompt, dataCallback, completeCallback, errorCallback) -> processMultiTurnChatStream(history,
+                        prompt, config, dataCallback, completeCallback,
+                        errorCallback));
     }
 
     /**
      * 处理同步多轮对话。
      *
      * @param conversationHistory 对话历史
-     * @param systemPrompt 系统提示
-     * @param config 配置
+     * @param systemPrompt        系统提示
+     * @param config              配置
      * @return 完整响应
      */
     private String processMultiTurnChatSync(String conversationHistory, String systemPrompt,
-        BasicConfig config) {
+            BasicConfig config) {
         try {
             var request = createDeepSeekRequest(config, false);
 
             // 解析对话历史并添加系统提示
-            ArrayNode messagesArray =
-                AiServiceUtils.parseConversationHistoryWithSystemPrompt(conversationHistory,
+            ArrayNode messagesArray = AiServiceUtils.parseConversationHistoryWithSystemPrompt(conversationHistory,
                     systemPrompt, request.mapper());
             request.root().set("messages", messagesArray);
 
@@ -152,21 +159,20 @@ public class DeepSeekAiService implements AiService {
      * 处理流式多轮对话。
      *
      * @param conversationHistory 对话历史
-     * @param systemPrompt 系统提示
-     * @param config 配置
-     * @param onData 数据回调
-     * @param onComplete 完成回调
-     * @param onError 错误回调
+     * @param systemPrompt        系统提示
+     * @param config              配置
+     * @param onData              数据回调
+     * @param onComplete          完成回调
+     * @param onError             错误回调
      */
     private void processMultiTurnChatStream(String conversationHistory, String systemPrompt,
-        BasicConfig config,
-        Consumer<String> onData, Runnable onComplete, Consumer<String> onError) {
+            BasicConfig config,
+            Consumer<String> onData, Runnable onComplete, Consumer<String> onError) {
         try {
             var request = createDeepSeekRequest(config, true);
 
             // 解析对话历史并添加系统提示
-            ArrayNode messagesArray =
-                AiServiceUtils.parseConversationHistoryWithSystemPrompt(conversationHistory,
+            ArrayNode messagesArray = AiServiceUtils.parseConversationHistoryWithSystemPrompt(conversationHistory,
                     systemPrompt, request.mapper());
             request.root().set("messages", messagesArray);
 
@@ -184,14 +190,14 @@ public class DeepSeekAiService implements AiService {
     /**
      * 处理流式响应，逐行读取并解析SSE数据。
      *
-     * @param conn HTTP连接
-     * @param body 请求体
-     * @param onData 数据回调函数
+     * @param conn       HTTP连接
+     * @param body       请求体
+     * @param onData     数据回调函数
      * @param onComplete 完成回调函数
-     * @param onError 错误回调函数
+     * @param onError    错误回调函数
      */
     private void processStreamResponse(HttpURLConnection conn, String body,
-        Consumer<String> onData, Runnable onComplete, Consumer<String> onError) {
+            Consumer<String> onData, Runnable onComplete, Consumer<String> onError) {
         try (OutputStream os = conn.getOutputStream()) {
             os.write(body.getBytes());
         } catch (IOException e) {
@@ -227,4 +233,3 @@ public class DeepSeekAiService implements AiService {
         }
     }
 }
-

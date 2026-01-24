@@ -188,16 +188,27 @@ export default Extension.create<ArticleCompletionOptions>({
 // Helper to fetch completion
 async function fetchCompletion(view: EditorView) {
     if (!view || view.isDestroyed) return;
+
+    // Check if selection is a text cursor (empty range)
+    const { selection, doc } = view.state
+    if (!selection.empty) return; // Don't trigger if text is selected or node is selected
+
     console.log('[ArticleCompletion] Fetching completion...')
 
     // Get context (last 2000 chars)
-    const { from } = view.state.selection
+    const { from } = selection
     const start = Math.max(0, from - 2000)
-    const context = view.state.doc.textBetween(start, from, '\n')
-
-    if (!context || !context.trim()) return;
 
     try {
+        // Use a special leaf text to avoid object replacement characters causing issues
+        // \uFFFC is the object replacement character used for images/embeds
+        const rawContext = doc.textBetween(start, from, '\n', ' ')
+
+        // Sanitize context: remove null bytes or control characters if any, though textBetween usually handles it
+        const context = rawContext.replace(/[\uFFFC]/g, ' ').trim()
+
+        if (!context) return;
+
         const response = await axios.post('/apis/api.plugin.ai-copilot/v1alpha1/completion', {
             context,
         })

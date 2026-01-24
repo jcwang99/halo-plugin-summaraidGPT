@@ -224,3 +224,11 @@ spec:
           placeholder: "请输入文章补全的AI角色设定"
           value: ""
           help: "自定义补全的 System Prompt，留空则使用内置的'强制续写'优化提示词（推荐留空）。"
+        - $formkit: number
+          name: generateMaxToken
+          label: 单次补全最大长度
+          placeholder: "请输入最大生成字符数"
+          value: 100
+          min: 10
+          max: 1000
+          help: "限制AI单次生成的最大Token数量，防止生成过长内容。默认100。"

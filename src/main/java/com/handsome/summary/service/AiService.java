@@ -12,12 +12,14 @@ import java.util.function.Consumer;
 public interface AiService {
     /**
      * 返回AI类型标识（如 openAi/zhipuAi/dashScope），用于工厂分发。
+     * 
      * @return 类型唯一标识字符串
      */
     String getType();
 
     /**
      * 调用AI服务，返回完整原始响应JSON字符串。
+     * 
      * @param prompt 用户输入的提示词
      * @param config 当前AI相关配置（包含API Key、模型名、baseUrl等）
      * @return AI返回的完整原始响应JSON字符串，业务层可自行解析content、role、history等字段
@@ -25,9 +27,22 @@ public interface AiService {
     String chatCompletionRaw(String prompt, SettingConfigGetter.BasicConfig config);
 
     /**
+     * 调用AI服务，支持最大Token限制。
+     * 
+     * @param prompt    用户输入的提示词
+     * @param config    当前AI相关配置
+     * @param maxTokens 最大Token数
+     * @return AI返回的完整原始响应JSON字符串
+     */
+    default String chatCompletionRaw(String prompt, SettingConfigGetter.BasicConfig config, Integer maxTokens) {
+        return chatCompletionRaw(prompt, config);
+    }
+
+    /**
      * 多轮对话AI服务调用，返回完整原始响应JSON字符串。
+     * 
      * @param conversationHistory 对话历史，JSON格式字符串，包含role和content字段
-     * @param config 当前AI相关配置（包含API Key、模型名、baseUrl等）
+     * @param config              当前AI相关配置（包含API Key、模型名、baseUrl等）
      * @return AI返回的完整原始响应JSON字符串
      */
     default String multiTurnChat(String conversationHistory, SettingConfigGetter.BasicConfig config) {
@@ -36,14 +51,15 @@ public interface AiService {
 
     /**
      * 多轮对话AI服务调用，支持系统提示和流式输出。
+     * 
      * @param conversationHistory 对话历史，JSON格式字符串，包含role和content字段
-     * @param systemPrompt 系统提示/角色设定，如果为空则不添加系统消息
-     * @param config 当前AI相关配置（包含API Key、模型名、baseUrl等）
-     * @param onData 数据块回调函数，每收到一个数据块就会调用一次，如果为null则使用非流式模式
-     * @param onComplete 完成回调函数，流式传输完成时调用，如果为null则使用非流式模式
-     * @param onError 错误回调函数，发生错误时调用，如果为null则使用非流式模式
+     * @param systemPrompt        系统提示/角色设定，如果为空则不添加系统消息
+     * @param config              当前AI相关配置（包含API Key、模型名、baseUrl等）
+     * @param onData              数据块回调函数，每收到一个数据块就会调用一次，如果为null则使用非流式模式
+     * @param onComplete          完成回调函数，流式传输完成时调用，如果为null则使用非流式模式
+     * @param onError             错误回调函数，发生错误时调用，如果为null则使用非流式模式
      * @return 非流式模式时返回完整响应JSON字符串，流式模式时返回null
      */
     String multiTurnChat(String conversationHistory, String systemPrompt, SettingConfigGetter.BasicConfig config,
-                        Consumer<String> onData, Runnable onComplete, Consumer<String> onError);
-} 
+            Consumer<String> onData, Runnable onComplete, Consumer<String> onError);
+}

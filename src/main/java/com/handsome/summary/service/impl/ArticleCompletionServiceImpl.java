@@ -52,7 +52,9 @@ public class ArticleCompletionServiceImpl implements ArticleCompletionService {
                     // Create compatible config
                     var compatibleConfig = aiConfigService.createCompatibleBasicConfig(aiConfig);
 
-                    return Mono.fromCallable(() -> aiService.chatCompletionRaw(prompt, compatibleConfig));
+                    Integer maxTokens = aiConfig.getMaxToken();
+
+                    return Mono.fromCallable(() -> aiService.chatCompletionRaw(prompt, compatibleConfig, maxTokens));
                 })
                 .map(AiServiceUtils::extractContentFromResponse)
                 .doOnSuccess(result -> log.info("Text completion generated. Length: {}",

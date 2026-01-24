@@ -1,6 +1,5 @@
 package com.handsome.summary.service;
 
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -42,34 +41,33 @@ public class OpenAiService implements AiService {
      * 创建OpenAI API连接和基础JSON结构
      */
     private record OpenAiRequest(HttpURLConnection conn, ObjectMapper mapper, ObjectNode root,
-                                 ArrayNode messages) {
+            ArrayNode messages) {
     }
 
     private OpenAiRequest createOpenAiRequest(BasicConfig config, boolean isStream)
-        throws Exception {
+            throws Exception {
         String modelType = config.getGlobalAiType();
         String apiKey, modelName, baseUrl;
 
         // 根据AI类型获取配置
         if ("codesphere".equalsIgnoreCase(modelType) && config.getAiModelConfig() != null
-            && config.getAiModelConfig().getCodesphereConfig() != null) {
+                && config.getAiModelConfig().getCodesphereConfig() != null) {
             var codesphereConfig = config.getAiModelConfig().getCodesphereConfig();
             apiKey = codesphereConfig.getApiKey();
             modelName = codesphereConfig.getModelName();
             baseUrl = "https://api.master-jsx.top";
             log.info("使用Codesphere配置 - ModelName: {}", modelName);
         } else if ("siliconFlow".equalsIgnoreCase(modelType) && config.getAiModelConfig() != null
-            && config.getAiModelConfig().getSiliconFlowConfig() != null) {
+                && config.getAiModelConfig().getSiliconFlowConfig() != null) {
             var siliconFlowConfig = config.getAiModelConfig().getSiliconFlowConfig();
             apiKey = siliconFlowConfig.getApiKey();
             modelName = siliconFlowConfig.getModelName();
-            baseUrl =
-                siliconFlowConfig.getBaseUrl() != null && !siliconFlowConfig.getBaseUrl().isEmpty()
+            baseUrl = siliconFlowConfig.getBaseUrl() != null && !siliconFlowConfig.getBaseUrl().isEmpty()
                     ? siliconFlowConfig.getBaseUrl()
                     : "https://api.siliconflow.cn";
             log.info("使用硅基流动配置 - ModelName: {}, BaseUrl: {}", modelName, baseUrl);
         } else if (config.getAiModelConfig() != null
-            && config.getAiModelConfig().getOpenAiConfig() != null) {
+                && config.getAiModelConfig().getOpenAiConfig() != null) {
             var openAiConfig = config.getAiModelConfig().getOpenAiConfig();
             apiKey = openAiConfig.getApiKey();
             modelName = openAiConfig.getModelName();
@@ -105,7 +103,7 @@ public class OpenAiService implements AiService {
     /**
      * 构建API URL。
      *
-     * @param baseUrl 基础URL
+     * @param baseUrl  基础URL
      * @param endpoint API端点，默认为"/v1/chat/completions"
      * @return 完整的API URL
      */
@@ -126,7 +124,6 @@ public class OpenAiService implements AiService {
         }
     }
 
-
     /**
      * 调用OpenAI服务，返回完整原始响应JSON字符串。
      *
@@ -137,6 +134,11 @@ public class OpenAiService implements AiService {
      */
     @Override
     public String chatCompletionRaw(String prompt, BasicConfig config) {
+        return chatCompletionRaw(prompt, config, null);
+    }
+
+    @Override
+    public String chatCompletionRaw(String prompt, BasicConfig config, Integer maxTokens) {
         try {
             var request = createOpenAiRequest(config, false);
 
@@ -144,6 +146,10 @@ public class OpenAiService implements AiService {
             ObjectNode message = request.messages().addObject();
             message.put("role", "user");
             message.put("content", prompt);
+
+            if (maxTokens != null && maxTokens > 0) {
+                request.root().put("max_tokens", maxTokens);
+            }
 
             String body = request.mapper().writeValueAsString(request.root());
             return AiServiceUtils.getOutputStream(request.conn(), body);
@@ -155,36 +161,34 @@ public class OpenAiService implements AiService {
 
     @Override
     public String multiTurnChat(String conversationHistory, String systemPrompt, BasicConfig config,
-        Consumer<String> onData, Runnable onComplete, Consumer<String> onError) {
+            Consumer<String> onData, Runnable onComplete, Consumer<String> onError) {
         return AiServiceUtils.handleMultiTurnChat(
-            conversationHistory,
-            systemPrompt,
-            onData,
-            onComplete,
-            onError,
-            (history, prompt) -> processMultiTurnChatSync(history, prompt, config),
-            (history, prompt, dataCallback, completeCallback, errorCallback) ->
-                processMultiTurnChatStream(history, prompt, config, dataCallback, completeCallback,
-                    errorCallback)
-        );
+                conversationHistory,
+                systemPrompt,
+                onData,
+                onComplete,
+                onError,
+                (history, prompt) -> processMultiTurnChatSync(history, prompt, config),
+                (history, prompt, dataCallback, completeCallback, errorCallback) -> processMultiTurnChatStream(history,
+                        prompt, config, dataCallback, completeCallback,
+                        errorCallback));
     }
 
     /**
      * 处理同步多轮对话。
      *
      * @param conversationHistory 对话历史
-     * @param systemPrompt 系统提示
-     * @param config 配置
+     * @param systemPrompt        系统提示
+     * @param config              配置
      * @return 完整响应
      */
     private String processMultiTurnChatSync(String conversationHistory, String systemPrompt,
-        BasicConfig config) {
+            BasicConfig config) {
         try {
             var request = createOpenAiRequest(config, false);
 
             // 解析对话历史并添加系统提示
-            ArrayNode messagesArray =
-                AiServiceUtils.parseConversationHistoryWithSystemPrompt(conversationHistory,
+            ArrayNode messagesArray = AiServiceUtils.parseConversationHistoryWithSystemPrompt(conversationHistory,
                     systemPrompt, request.mapper());
             request.root().set("messages", messagesArray);
 
@@ -200,21 +204,20 @@ public class OpenAiService implements AiService {
      * 处理流式多轮对话。
      *
      * @param conversationHistory 对话历史
-     * @param systemPrompt 系统提示
-     * @param config 配置
-     * @param onData 数据回调
-     * @param onComplete 完成回调
-     * @param onError 错误回调
+     * @param systemPrompt        系统提示
+     * @param config              配置
+     * @param onData              数据回调
+     * @param onComplete          完成回调
+     * @param onError             错误回调
      */
     private void processMultiTurnChatStream(String conversationHistory, String systemPrompt,
-        BasicConfig config,
-        Consumer<String> onData, Runnable onComplete, Consumer<String> onError) {
+            BasicConfig config,
+            Consumer<String> onData, Runnable onComplete, Consumer<String> onError) {
         try {
             var request = createOpenAiRequest(config, true);
 
             // 解析对话历史并添加系统提示
-            ArrayNode messagesArray =
-                AiServiceUtils.parseConversationHistoryWithSystemPrompt(conversationHistory,
+            ArrayNode messagesArray = AiServiceUtils.parseConversationHistoryWithSystemPrompt(conversationHistory,
                     systemPrompt, request.mapper());
             request.root().set("messages", messagesArray);
 
@@ -226,22 +229,21 @@ public class OpenAiService implements AiService {
         } catch (Exception e) {
             log.error("OpenAI流式多轮对话处理异常: {}", e.getMessage(), e);
             onError.accept(
-                "[" + config.getGlobalAiType() + " 流式对话异常：" + e.getMessage() + "]");
+                    "[" + config.getGlobalAiType() + " 流式对话异常：" + e.getMessage() + "]");
         }
     }
-
 
     /**
      * 处理流式响应，逐行读取并解析SSE数据。
      *
-     * @param conn HTTP连接
-     * @param body 请求体
-     * @param onData 数据回调函数
+     * @param conn       HTTP连接
+     * @param body       请求体
+     * @param onData     数据回调函数
      * @param onComplete 完成回调函数
-     * @param onError 错误回调函数
+     * @param onError    错误回调函数
      */
     private void processStreamResponse(HttpURLConnection conn, String body,
-        Consumer<String> onData, Runnable onComplete, Consumer<String> onError) {
+            Consumer<String> onData, Runnable onComplete, Consumer<String> onError) {
         try (OutputStream os = conn.getOutputStream()) {
             os.write(body.getBytes());
         } catch (IOException e) {
@@ -277,9 +279,8 @@ public class OpenAiService implements AiService {
         }
     }
 
-
     @NotNull
     public String getOutputStream(HttpURLConnection conn, String body) throws IOException {
         return AiServiceUtils.getOutputStream(conn, body);
     }
-} 
+}

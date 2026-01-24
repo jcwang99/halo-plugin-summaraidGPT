@@ -78,6 +78,7 @@ public interface SettingConfigGetter {
         private String modelName;
         private String baseUrl;
         private String systemPrompt;
+        private Integer maxToken;
     }
 
     @Data
@@ -149,6 +150,7 @@ public interface SettingConfigGetter {
         public static final String GROUP = "generate";
         private String generateAiType;
         private String generateSystemPrompt;
+        private Integer generateMaxToken;
     }
 
     @Data

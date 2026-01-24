@@ -40,6 +40,7 @@ public class SettingConfigGetterImpl implements SettingConfigGetter {
                     AiConfigResult result = new AiConfigResult();
                     result.setAiType(aiType);
                     result.setSystemPrompt(functionInfo.systemPrompt());
+                    result.setMaxToken(functionInfo.maxToken());
 
                     populateAiConfig(result, aiType, basicConfig.getAiModelConfig());
 
@@ -53,8 +54,9 @@ public class SettingConfigGetterImpl implements SettingConfigGetter {
     private Mono<FunctionSpecificAiInfo> getFunctionSpecificConfig(String functionType) {
         return switch (functionType.toLowerCase()) {
             case "generate", "completion" -> getGenerateConfig().map(
-                    config -> new FunctionSpecificAiInfo(config.getGenerateAiType(), config.getGenerateSystemPrompt()));
-            default -> Mono.just(new FunctionSpecificAiInfo(null, null));
+                    config -> new FunctionSpecificAiInfo(config.getGenerateAiType(), config.getGenerateSystemPrompt(),
+                            config.getGenerateMaxToken()));
+            default -> Mono.just(new FunctionSpecificAiInfo(null, null, null));
         };
     }
 
@@ -132,6 +134,6 @@ public class SettingConfigGetterImpl implements SettingConfigGetter {
     /**
      * 功能特定的AI信息
      */
-    private record FunctionSpecificAiInfo(String aiType, String systemPrompt) {
+    private record FunctionSpecificAiInfo(String aiType, String systemPrompt, Integer maxToken) {
     }
 }
